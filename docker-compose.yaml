@@ -1,0 +1,27 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: backend-api
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - DB_HOST=aws-0-us-west-2.pooler.supabase.com
+      - DB_PORT=6543
+      - DB_USER=postgres.hnberacitqfoaujzvxsl
+      - DB_PASS=AI.martinez1
+      - DB_NAME=postgres
+    volumes:
+      - .:/usr/src/app
+      - /usr/src/app/node_modules
+    networks:
+      - gateway-network
+    command: pnpm run start:dev
+
+networks:
+  gateway-network:
+    driver: bridge
