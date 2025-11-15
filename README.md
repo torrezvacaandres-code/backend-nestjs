@@ -25,6 +25,13 @@
 
 [Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
 
+## 📚 Documentación de Comandos
+
+**Para ver todos los comandos disponibles (Docker, migraciones, entidades, etc.), consulta:**
+👉 **[COMMANDS.md](./COMMANDS.md)**
+
+Este proyecto usa Docker y está configurado para trabajar con una base de datos PostgreSQL en Supabase.
+
 ## Project setup
 
 ```bash

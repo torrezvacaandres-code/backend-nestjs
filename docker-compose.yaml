@@ -16,8 +16,8 @@ services:
       - DB_PASS=AI.martinez1
       - DB_NAME=postgres
     volumes:
-      - .:/usr/src/app
-      - /usr/src/app/node_modules
+      - .:/app
+      - /app/node_modules
     networks:
       - gateway-network
     command: pnpm run start:dev
