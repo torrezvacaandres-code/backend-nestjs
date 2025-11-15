@@ -16,7 +16,15 @@ export class PlatosService {
 
   async create(dto: CreatePlatoDto): Promise<Platos> {
     const entity = this.platosRepo.create(dto as Partial<Platos>);
-    return this.platosRepo.save(entity);
+    try {
+      return await this.platosRepo.save(entity);
+    } catch (err: any) {
+      if (err?.code === '23505' && (err?.constraint ?? '').includes('platos_pkey')) {
+        await this.syncIdSequence();
+        return await this.platosRepo.save(entity);
+      }
+      throw err;
+    }
   }
 
   async findAll(query: QueryPlatoDto) {
@@ -56,5 +64,15 @@ export class PlatosService {
   async remove(id: number | string): Promise<void> {
     const result = await this.platosRepo.delete(String(id));
     if (!result.affected) throw new NotFoundException('Plato no encontrado');
+  }
+
+  private async syncIdSequence(): Promise<void> {
+    const seqRes = await this.platosRepo.query("SELECT pg_get_serial_sequence('public.platos', 'id') AS seq_name");
+    const seq = seqRes?.[0]?.seq_name;
+    if (!seq) return;
+    await this.platosRepo.query(
+      `SELECT setval($1, (SELECT COALESCE(MAX(id), 0) + 1 FROM public.platos), false)`,
+      [seq],
+    );
   }
 }

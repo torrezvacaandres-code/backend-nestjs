@@ -19,7 +19,15 @@ export class PagosService {
       ...(dto as any),
       monto: dto.monto != null ? String(dto.monto) : undefined,
     } as Partial<Pagos>);
-    return this.pagosRepo.save(entity);
+    try {
+      return await this.pagosRepo.save(entity);
+    } catch (err: any) {
+      if (err?.code === '23505' && (err?.constraint ?? '').includes('pagos_pkey')) {
+        await this.syncIdSequence();
+        return await this.pagosRepo.save(entity);
+      }
+      throw err;
+    }
   }
 
   async findAll(query: QueryPagoDto) {
@@ -68,5 +76,15 @@ export class PagosService {
   async remove(id: number | string): Promise<void> {
     const result = await this.pagosRepo.delete(String(id));
     if (!result.affected) throw new NotFoundException('Pago no encontrado');
+  }
+
+  private async syncIdSequence(): Promise<void> {
+    const seqRes = await this.pagosRepo.query("SELECT pg_get_serial_sequence('public.pagos', 'id') AS seq_name");
+    const seq = seqRes?.[0]?.seq_name;
+    if (!seq) return;
+    await this.pagosRepo.query(
+      `SELECT setval($1, (SELECT COALESCE(MAX(id), 0) + 1 FROM public.pagos), false)`,
+      [seq],
+    );
   }
 }

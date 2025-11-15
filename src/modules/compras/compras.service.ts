@@ -16,7 +16,15 @@ export class ComprasService {
 
   async create(dto: CreateCompraDto): Promise<Compras> {
     const entity = this.comprasRepo.create(dto as Partial<Compras>);
-    return this.comprasRepo.save(entity);
+    try {
+      return await this.comprasRepo.save(entity);
+    } catch (err: any) {
+      if (err?.code === '23505' && (err?.constraint ?? '').includes('compras_pkey')) {
+        await this.syncIdSequence();
+        return await this.comprasRepo.save(entity);
+      }
+      throw err;
+    }
   }
 
   async findAll(query: QueryCompraDto) {
@@ -59,5 +67,15 @@ export class ComprasService {
   async remove(id: number | string): Promise<void> {
     const result = await this.comprasRepo.delete(String(id));
     if (!result.affected) throw new NotFoundException('Compra no encontrada');
+  }
+
+  private async syncIdSequence(): Promise<void> {
+    const seqRes = await this.comprasRepo.query("SELECT pg_get_serial_sequence('public.compras', 'id') AS seq_name");
+    const seq = seqRes?.[0]?.seq_name;
+    if (!seq) return;
+    await this.comprasRepo.query(
+      `SELECT setval($1, (SELECT COALESCE(MAX(id), 0) + 1 FROM public.compras), false)`,
+      [seq],
+    );
   }
 }

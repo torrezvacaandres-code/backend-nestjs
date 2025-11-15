@@ -16,7 +16,15 @@ export class DocumentosBecaService {
 
   async create(dto: CreateDocumentosBecaDto): Promise<DocumentosBeca> {
     const entity = this.docsRepo.create(dto as Partial<DocumentosBeca>);
-    return this.docsRepo.save(entity);
+    try {
+      return await this.docsRepo.save(entity);
+    } catch (err: any) {
+      if (err?.code === '23505' && (err?.constraint ?? '').includes('documentos_beca_pkey')) {
+        await this.syncIdSequence();
+        return await this.docsRepo.save(entity);
+      }
+      throw err;
+    }
   }
 
   async findAll(query: QueryDocumentosBecaDto) {
@@ -56,5 +64,15 @@ export class DocumentosBecaService {
   async remove(id: number | string): Promise<void> {
     const result = await this.docsRepo.delete(String(id));
     if (!result.affected) throw new NotFoundException('Documento de beca no encontrado');
+  }
+
+  private async syncIdSequence(): Promise<void> {
+    const seqRes = await this.docsRepo.query("SELECT pg_get_serial_sequence('public.documentos_beca', 'id') AS seq_name");
+    const seq = seqRes?.[0]?.seq_name;
+    if (!seq) return;
+    await this.docsRepo.query(
+      `SELECT setval($1, (SELECT COALESCE(MAX(id), 0) + 1 FROM public.documentos_beca), false)`,
+      [seq],
+    );
   }
 }

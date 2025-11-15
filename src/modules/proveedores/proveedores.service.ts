@@ -16,7 +16,15 @@ export class ProveedoresService {
 
   async create(dto: CreateProveedoreDto): Promise<Proveedores> {
     const entity = this.proveedoresRepo.create(dto as Partial<Proveedores>);
-    return this.proveedoresRepo.save(entity);
+    try {
+      return await this.proveedoresRepo.save(entity);
+    } catch (err: any) {
+      if (err?.code === '23505' && (err?.constraint ?? '').includes('proveedores_pkey')) {
+        await this.syncIdSequence();
+        return await this.proveedoresRepo.save(entity);
+      }
+      throw err;
+    }
   }
 
   async findAll(query: QueryProveedoreDto) {
@@ -60,5 +68,15 @@ export class ProveedoresService {
   async remove(id: number | string): Promise<void> {
     const result = await this.proveedoresRepo.delete(String(id));
     if (!result.affected) throw new NotFoundException('Proveedor no encontrado');
+  }
+
+  private async syncIdSequence(): Promise<void> {
+    const seqRes = await this.proveedoresRepo.query("SELECT pg_get_serial_sequence('public.proveedores', 'id') AS seq_name");
+    const seq = seqRes?.[0]?.seq_name;
+    if (!seq) return;
+    await this.proveedoresRepo.query(
+      `SELECT setval($1, (SELECT COALESCE(MAX(id), 0) + 1 FROM public.proveedores), false)`,
+      [seq],
+    );
   }
 }

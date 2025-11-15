@@ -20,7 +20,21 @@ export class InsumosService {
       return await this.insumosRepo.save(entity);
     } catch (err: any) {
       if (err?.code === '23505') {
-        throw new BadRequestException('El SKU ya existe');
+        const constraint: string = err?.constraint ?? '';
+        if (constraint.includes('insumos_sku_key')) {
+          throw new BadRequestException('El SKU ya existe');
+        }
+        if (constraint.includes('insumos_pkey')) {
+          await this.syncIdSequence();
+          try {
+            return await this.insumosRepo.save(entity);
+          } catch (retryErr: any) {
+            if (retryErr?.code === '23505' && (retryErr?.constraint ?? '').includes('insumos_sku_key')) {
+              throw new BadRequestException('El SKU ya existe');
+            }
+            throw new BadRequestException('Error interno: secuencia de IDs desincronizada');
+          }
+        }
       }
       throw err;
     }
@@ -63,7 +77,13 @@ export class InsumosService {
       return await this.insumosRepo.save(preload);
     } catch (err: any) {
       if (err?.code === '23505') {
-        throw new BadRequestException('El SKU ya existe');
+        const constraint: string = err?.constraint ?? '';
+        if (constraint.includes('insumos_sku_key')) {
+          throw new BadRequestException('El SKU ya existe');
+        }
+        if (constraint.includes('insumos_pkey')) {
+          throw new BadRequestException('Error interno: secuencia de IDs desincronizada');
+        }
       }
       throw err;
     }
@@ -76,5 +96,15 @@ export class InsumosService {
     } catch (err) {
       throw err;
     }
+  }
+
+  private async syncIdSequence(): Promise<void> {
+    const seqRes = await this.insumosRepo.query("SELECT pg_get_serial_sequence('public.insumos', 'id') AS seq_name");
+    const seq = seqRes?.[0]?.seq_name;
+    if (!seq) return;
+    await this.insumosRepo.query(
+      `SELECT setval($1, (SELECT COALESCE(MAX(id), 0) + 1 FROM public.insumos), false)`,
+      [seq],
+    );
   }
 }

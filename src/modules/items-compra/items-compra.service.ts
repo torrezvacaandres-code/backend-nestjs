@@ -45,7 +45,15 @@ export class ItemsCompraService {
       compra,
       insumo,
     } as Partial<ItemsCompra>);
-    return this.itemsCompraRepo.save(entity);
+    try {
+      return await this.itemsCompraRepo.save(entity);
+    } catch (err: any) {
+      if (err?.code === '23505' && (err?.constraint ?? '').includes('items_compra_pkey')) {
+        await this.syncIdSequence();
+        return await this.itemsCompraRepo.save(entity);
+      }
+      throw err;
+    }
   }
 
   async findAll(query: QueryItemsCompraDto) {
@@ -78,5 +86,15 @@ export class ItemsCompraService {
   async remove(id: number | string): Promise<void> {
     const result = await this.itemsCompraRepo.delete(String(id));
     if (!result.affected) throw new NotFoundException('Item de compra no encontrado');
+  }
+
+  private async syncIdSequence(): Promise<void> {
+    const seqRes = await this.itemsCompraRepo.query("SELECT pg_get_serial_sequence('public.items_compra', 'id') AS seq_name");
+    const seq = seqRes?.[0]?.seq_name;
+    if (!seq) return;
+    await this.itemsCompraRepo.query(
+      `SELECT setval($1, (SELECT COALESCE(MAX(id), 0) + 1 FROM public.items_compra), false)`,
+      [seq],
+    );
   }
 }

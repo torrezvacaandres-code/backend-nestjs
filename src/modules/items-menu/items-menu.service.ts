@@ -33,7 +33,15 @@ export class ItemsMenuService {
       throw new BadRequestException('El precio no puede ser negativo');
     }
     const entity = this.itemsMenuRepo.create(dto as Partial<ItemsMenu>);
-    return this.itemsMenuRepo.save(entity);
+    try {
+      return await this.itemsMenuRepo.save(entity);
+    } catch (err: any) {
+      if (err?.code === '23505' && (err?.constraint ?? '').includes('items_menu_pkey')) {
+        await this.syncIdSequence();
+        return await this.itemsMenuRepo.save(entity);
+      }
+      throw err;
+    }
   }
 
   async findAll(query: QueryItemsMenuDto) {
@@ -82,5 +90,15 @@ export class ItemsMenuService {
   async remove(id: number | string): Promise<void> {
     const result = await this.itemsMenuRepo.delete(String(id));
     if (!result.affected) throw new NotFoundException('Item de menú no encontrado');
+  }
+
+  private async syncIdSequence(): Promise<void> {
+    const seqRes = await this.itemsMenuRepo.query("SELECT pg_get_serial_sequence('public.items_menu', 'id') AS seq_name");
+    const seq = seqRes?.[0]?.seq_name;
+    if (!seq) return;
+    await this.itemsMenuRepo.query(
+      `SELECT setval($1, (SELECT COALESCE(MAX(id), 0) + 1 FROM public.items_menu), false)`,
+      [seq],
+    );
   }
 }

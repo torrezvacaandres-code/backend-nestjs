@@ -22,7 +22,15 @@ export class MenusService {
       if (exists) {
         throw new BadRequestException('Ya existe un menú para esa fecha y comida');
       }
-      return await this.menusRepo.save(entity);
+      try {
+        return await this.menusRepo.save(entity);
+      } catch (err: any) {
+        if (err?.code === '23505' && (err?.constraint ?? '').includes('menus_pkey')) {
+          await this.syncIdSequence();
+          return await this.menusRepo.save(entity);
+        }
+        throw err;
+      }
     } catch (err: any) {
       if (err?.code === '23505') {
         throw new BadRequestException('Ya existe un menú para esa fecha y comida');
@@ -74,5 +82,15 @@ export class MenusService {
   async remove(id: number | string): Promise<void> {
     const result = await this.menusRepo.delete(String(id));
     if (!result.affected) throw new NotFoundException('Menú no encontrado');
+  }
+
+  private async syncIdSequence(): Promise<void> {
+    const seqRes = await this.menusRepo.query("SELECT pg_get_serial_sequence('public.menus', 'id') AS seq_name");
+    const seq = seqRes?.[0]?.seq_name;
+    if (!seq) return;
+    await this.menusRepo.query(
+      `SELECT setval($1, (SELECT COALESCE(MAX(id), 0) + 1 FROM public.menus), false)`,
+      [seq],
+    );
   }
 }

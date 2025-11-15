@@ -54,7 +54,15 @@ export class MovimientosStockService {
       referenciaCompra,
       referenciaTicket,
     } as Partial<MovimientosStock>);
-    return this.movRepo.save(entity);
+    try {
+      return await this.movRepo.save(entity);
+    } catch (err: any) {
+      if (err?.code === '23505' && (err?.constraint ?? '').includes('movimientos_stock_pkey')) {
+        await this.syncIdSequence();
+        return await this.movRepo.save(entity);
+      }
+      throw err;
+    }
   }
 
   async findAll(query: QueryMovimientosStockDto) {
@@ -119,5 +127,15 @@ export class MovimientosStockService {
   async remove(id: number | string): Promise<void> {
     const result = await this.movRepo.delete(String(id));
     if (!result.affected) throw new NotFoundException('Movimiento de stock no encontrado');
+  }
+
+  private async syncIdSequence(): Promise<void> {
+    const seqRes = await this.movRepo.query("SELECT pg_get_serial_sequence('public.movimientos_stock', 'id') AS seq_name");
+    const seq = seqRes?.[0]?.seq_name;
+    if (!seq) return;
+    await this.movRepo.query(
+      `SELECT setval($1, (SELECT COALESCE(MAX(id), 0) + 1 FROM public.movimientos_stock), false)`,
+      [seq],
+    );
   }
 }
