@@ -1,7 +1,7 @@
 import { ApiPropertyOptional } from "@nestjs/swagger";
 import { IsBoolean, IsISO8601, IsOptional, IsString } from 'class-validator';
 
-export class CreatePersonnaDto {
+export class CreatePersonaDto {
     @ApiPropertyOptional({
         description: 'Nombre completo de la persona',
         example: 'Juan Perez',
