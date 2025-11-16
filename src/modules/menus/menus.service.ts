@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Between } from 'typeorm';
 import { CreateMenuDto } from './dto/create-menu.dto';
 import { UpdateMenuDto } from './dto/update-menu.dto';
 import { Menus } from '../../entities/menus';
@@ -68,9 +68,14 @@ export class MenusService {
     sunday.setDate(monday.getDate() + 6);
 
     const toISODate = (d: Date) => d.toISOString().slice(0, 10);
+    const mondayStr = toISODate(monday);
+    const sundayStr = toISODate(sunday);
 
     return this.menusRepo.find({
-      where: { fecha: (value: any) => value >= toISODate(monday) && value <= toISODate(sunday) } as any,
+      where: {
+        fecha: Between(mondayStr, sundayStr)
+      },
+      relations: ['itemsMenus', 'itemsMenus.plato'],
       order: { fecha: 'ASC', comida: 'ASC' },
     });
   }

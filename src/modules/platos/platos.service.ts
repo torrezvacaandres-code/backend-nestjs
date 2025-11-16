@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ILike, Repository } from 'typeorm';
 import { CreatePlatoDto } from './dto/create-plato.dto';
@@ -62,8 +62,15 @@ export class PlatosService {
   }
 
   async remove(id: number | string): Promise<void> {
-    const result = await this.platosRepo.delete(String(id));
-    if (!result.affected) throw new NotFoundException('Plato no encontrado');
+    try {
+      const result = await this.platosRepo.delete(String(id));
+      if (!result.affected) throw new NotFoundException('Plato no encontrado');
+    } catch (err: any) {
+      if (err?.code === '23503') {
+        throw new BadRequestException('No se puede eliminar el plato porque está siendo usado en menús activos');
+      }
+      throw err;
+    }
   }
 
   private async syncIdSequence(): Promise<void> {
