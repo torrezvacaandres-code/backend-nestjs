@@ -58,6 +58,16 @@ export class ReservasService {
     return entity;
   }
 
+  async findByUsuario(personaId: number | string, query: QueryReservaDto) {
+    const where: any = { persona: { id: String(personaId) } };
+    const { sortBy = 'creadoEn', sortDir = 'DESC' } = query;
+    return PaginationHelper.paginate(this.reservasRepo, query, {
+      where,
+      order: { [sortBy]: sortDir },
+      relations: ['persona', 'itemMenu'],
+    });
+  }
+
   async update(id: number | string, dto: UpdateReservaDto): Promise<Reservas> {
     const preload = await this.reservasRepo.preload({ id: String(id), ...(dto as any) });
     if (!preload) throw new NotFoundException('Reserva no encontrada');

@@ -26,6 +26,13 @@ export class MenusController {
     return this.menusService.findAll(query);
   }
 
+  @Get('semanal')
+  @ApiOperation({ summary: 'Listar menús de la semana actual' })
+  @ApiOkResponse({ description: 'Listado de menús de la semana' })
+  findWeekly() {
+    return this.menusService.findWeekly();
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Obtener un menú por ID' })
   @ApiOkResponse({ description: 'Menú encontrado' })

@@ -63,7 +63,7 @@ RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
 COPY . .
 
 # Expose application port
-EXPOSE 3000
+EXPOSE 3001
 
 # Start the application in development mode
 CMD ["pnpm", "run", "start:dev"]
@@ -97,7 +97,7 @@ RUN addgroup -g 1001 -S nodejs && \
 USER nestjs
 
 # Expose application port
-EXPOSE 3000
+EXPOSE 3001
 
 # Use tini as entrypoint for proper signal handling
 ENTRYPOINT ["/sbin/tini", "--"]

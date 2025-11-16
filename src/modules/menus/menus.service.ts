@@ -57,6 +57,24 @@ export class MenusService {
     return entity;
   }
 
+  async findWeekly(): Promise<Menus[]> {
+    const today = new Date();
+    // Obtener lunes de la semana actual
+    const day = today.getDay(); // 0=Domingo, 1=Lunes, ...
+    const diffToMonday = (day === 0 ? -6 : 1 - day);
+    const monday = new Date(today);
+    monday.setDate(today.getDate() + diffToMonday);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+
+    const toISODate = (d: Date) => d.toISOString().slice(0, 10);
+
+    return this.menusRepo.find({
+      where: { fecha: (value: any) => value >= toISODate(monday) && value <= toISODate(sunday) } as any,
+      order: { fecha: 'ASC', comida: 'ASC' },
+    });
+  }
+
   async update(id: number | string, dto: UpdateMenuDto): Promise<Menus> {
     const preload = await this.menusRepo.preload({ id: String(id), ...(dto as any) });
     if (!preload) throw new NotFoundException('Menú no encontrado');

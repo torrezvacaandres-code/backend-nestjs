@@ -34,6 +34,13 @@ export class ReservasController {
     return this.reservasService.findOne(id);
   }
 
+  @Get('usuario/:id')
+  @ApiOperation({ summary: 'Listar reservas de un usuario (persona) con paginación' })
+  @ApiOkResponse({ description: 'Listado paginado de reservas del usuario' })
+  findByUsuario(@Param('id') id: string, @Query() query: QueryReservaDto) {
+    return this.reservasService.findByUsuario(id, query);
+  }
+
   @Patch(':id')
   @ApiOperation({ summary: 'Actualizar una reserva' })
   @ApiOkResponse({ description: 'Reserva actualizada correctamente' })
